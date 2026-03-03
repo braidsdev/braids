@@ -46,9 +46,21 @@ func (c *ConnectorEngine) Fetch(resource string) ([]Record, error) {
 			return nil, fmt.Errorf("upstream %s returned %d: %s", url, resp.StatusCode, string(body))
 		}
 
-		var raw map[string]any
-		if err := json.Unmarshal(body, &raw); err != nil {
+		var parsed any
+		if err := json.Unmarshal(body, &parsed); err != nil {
 			return nil, fmt.Errorf("parsing response JSON: %w", err)
+		}
+
+		// Handle bare JSON arrays (e.g. JSONPlaceholder returns [{...}, ...])
+		if arr, ok := parsed.([]any); ok {
+			records := arrayToRecords(arr)
+			allRecords = append(allRecords, records...)
+			return allRecords, nil
+		}
+
+		raw, ok := parsed.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("unexpected JSON type in response")
 		}
 
 		records, err := c.extractRecords(raw, res.DataField)
@@ -129,6 +141,17 @@ func (c *ConnectorEngine) substituteVars(s string) string {
 		}
 		return match
 	})
+}
+
+// arrayToRecords converts a []any to []Record, skipping non-object elements.
+func arrayToRecords(arr []any) []Record {
+	records := make([]Record, 0, len(arr))
+	for _, item := range arr {
+		if m, ok := item.(map[string]any); ok {
+			records = append(records, Record(m))
+		}
+	}
+	return records
 }
 
 // parseLinkHeaderNext extracts the URL for rel="next" from a Link header.

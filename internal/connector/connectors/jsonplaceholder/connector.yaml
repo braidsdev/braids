@@ -1,0 +1,17 @@
+name: jsonplaceholder
+version: "1.0"
+base_url: https://jsonplaceholder.typicode.com
+auth:
+  type: none
+pagination:
+  type: none
+resources:
+  users:
+    path: /users
+    method: GET
+  posts:
+    path: /posts
+    method: GET
+  todos:
+    path: /todos
+    method: GET

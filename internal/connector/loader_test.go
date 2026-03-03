@@ -36,6 +36,51 @@ func TestLoadDefBuiltinShopify(t *testing.T) {
 	}
 }
 
+func TestLoadDefBuiltinJSONPlaceholder(t *testing.T) {
+	def, err := LoadDef("jsonplaceholder", "/nonexistent")
+	if err != nil {
+		t.Fatalf("failed to load built-in jsonplaceholder connector: %v", err)
+	}
+	if def.Name != "jsonplaceholder" {
+		t.Errorf("expected name 'jsonplaceholder', got %q", def.Name)
+	}
+	if def.Auth.Type != "none" {
+		t.Errorf("expected auth type 'none', got %q", def.Auth.Type)
+	}
+	if _, ok := def.Resources["users"]; !ok {
+		t.Error("expected 'users' resource")
+	}
+	if _, ok := def.Resources["posts"]; !ok {
+		t.Error("expected 'posts' resource")
+	}
+	if _, ok := def.Resources["todos"]; !ok {
+		t.Error("expected 'todos' resource")
+	}
+}
+
+func TestLoadDefBuiltinDummyJSON(t *testing.T) {
+	def, err := LoadDef("dummyjson", "/nonexistent")
+	if err != nil {
+		t.Fatalf("failed to load built-in dummyjson connector: %v", err)
+	}
+	if def.Name != "dummyjson" {
+		t.Errorf("expected name 'dummyjson', got %q", def.Name)
+	}
+	if def.Auth.Type != "none" {
+		t.Errorf("expected auth type 'none', got %q", def.Auth.Type)
+	}
+	if res, ok := def.Resources["users"]; !ok {
+		t.Error("expected 'users' resource")
+	} else if res.DataField != "users" {
+		t.Errorf("expected users data_field 'users', got %q", res.DataField)
+	}
+	if res, ok := def.Resources["products"]; !ok {
+		t.Error("expected 'products' resource")
+	} else if res.DataField != "products" {
+		t.Errorf("expected products data_field 'products', got %q", res.DataField)
+	}
+}
+
 func TestLoadDefNotFound(t *testing.T) {
 	_, err := LoadDef("nonexistent", "/tmp")
 	if err == nil {

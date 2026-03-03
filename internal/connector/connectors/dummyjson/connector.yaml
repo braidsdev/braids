@@ -1,0 +1,16 @@
+name: dummyjson
+version: "1.0"
+base_url: https://dummyjson.com
+auth:
+  type: none
+pagination:
+  type: none
+resources:
+  users:
+    path: /users
+    method: GET
+    data_field: users
+  products:
+    path: /products
+    method: GET
+    data_field: products
