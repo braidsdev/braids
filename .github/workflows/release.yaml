@@ -96,7 +96,7 @@ jobs:
   goreleaser:
     needs: release
     if: needs.release.outputs.skip != 'true'
-    runs-on: gh-runner-scale-set3
+    runs-on: gh-runner-scale-set4
     permissions:
       contents: write
     steps:
