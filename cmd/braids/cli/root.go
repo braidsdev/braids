@@ -9,6 +9,7 @@ import (
 var (
 	appVersion string
 	appCommit  string
+	configFile string
 )
 
 func Execute(version, commit string) error {
@@ -32,5 +33,6 @@ var versionCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "braids.yaml", "path to braids.yaml config file")
 	rootCmd.AddCommand(versionCmd)
 }
