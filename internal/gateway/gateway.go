@@ -18,6 +18,7 @@ import (
 
 // Gateway is the HTTP server that serves unified API endpoints.
 type Gateway struct {
+	Version    string
 	configPath string
 	configDir  string
 	cfg        *config.Config
@@ -90,7 +91,7 @@ func (g *Gateway) Start() error {
 		go g.watchConfig()
 	}
 
-	log.Printf("Braids gateway listening on :%d", port)
+	PrintBanner(g.cfg, g.engines, g.Version, g.configPath)
 	return g.server.ListenAndServe()
 }
 
