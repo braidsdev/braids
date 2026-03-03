@@ -3,7 +3,9 @@ version: 2
 project_name: braids
 
 builds:
-  - env:
+  - main: ./cmd/braids
+    binary: braids
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -26,11 +28,14 @@ brews:
   - repository:
       owner: braidsdev
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://braids.dev"
     description: "Config-driven API composition — Terraform for APIs"
     license: "MIT"
     install: |
       bin.install "braids"
+    test: |
+      system "#{bin}/braids", "--version"
 
 checksum:
   name_template: "checksums.txt"

@@ -1,0 +1,119 @@
+name: Release
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.goreleaser.yaml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run tests
+        run: go test ./...
+
+  release:
+    needs: test
+    runs-on: gh-runner-scale-set3
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+      skip: ${{ steps.version.outputs.skip }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Get next version
+        id: version
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            MESSAGES=$(git log "$LAST_TAG"..HEAD --format="%s")
+          else
+            MESSAGES=$(git log --format="%s")
+          fi
+
+          BUMP=$(MESSAGES="$MESSAGES" node -e "
+            const lines = (process.env.MESSAGES || '').trim().split('\n').filter(Boolean);
+            if (lines.every(m => /^chore(\s*\([^)]*\))?\s*:/.test(m))) {
+              console.log('skip');
+              process.exit(0);
+            }
+            if (lines.some(m => /^(feat|fix)\s*!(\s*\([^)]*\))?\s*:/.test(m) || /BREAKING[ -]CHANGE/.test(m))) {
+              console.log('major');
+              process.exit(0);
+            }
+            if (lines.some(m => /^feat(\s*\([^)]*\))?\s*:/.test(m))) {
+              console.log('minor');
+              process.exit(0);
+            }
+            console.log('patch');
+          ")
+
+          if [ "$BUMP" = "skip" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping release (chore only)"
+            exit 0
+          fi
+
+          BODY=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${{ github.repository }}/releases?per_page=1")
+          CURRENT=$(BODY="$BODY" node -e "
+            const r = JSON.parse(process.env.BODY || '[]');
+            const tag = Array.isArray(r) && r.length > 0 && !r[0].draft ? r[0].tag_name : '';
+            console.log((tag || '0.0.0').replace(/^v/, ''));
+          ")
+
+          NEXT=$(npx --yes semver "$CURRENT" -i "$BUMP")
+          echo "version=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEXT" >> "$GITHUB_OUTPUT"
+          echo "Next version: $NEXT (from $CURRENT, bump: $BUMP)"
+
+      - name: Create release
+        if: steps.version.outputs.skip != 'true'
+        run: |
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" \
+            -d '{"tag_name":"${{ steps.version.outputs.tag }}","target_commitish":"main","generate_release_notes":true}'
+
+  goreleaser:
+    needs: release
+    if: needs.release.outputs.skip != 'true'
+    runs-on: gh-runner-scale-set3
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
