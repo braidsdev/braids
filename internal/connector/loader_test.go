@@ -7,7 +7,9 @@ import (
 )
 
 func TestLoadDefBuiltinStripe(t *testing.T) {
-	def, err := LoadDef("stripe", "/nonexistent", "")
+	// Use LoadDefWithoutSpec since the Stripe spec is no longer embedded —
+	// it's lazily downloaded via openapi_url.
+	def, err := LoadDefWithoutSpec("stripe", "/nonexistent", "")
 	if err != nil {
 		t.Fatalf("failed to load built-in stripe connector: %v", err)
 	}
@@ -17,43 +19,8 @@ func TestLoadDefBuiltinStripe(t *testing.T) {
 	if def.Auth.Type != "bearer" {
 		t.Errorf("expected auth type 'bearer', got %q", def.Auth.Type)
 	}
-	if def.OpenAPISpec != "openapi.spec3.json" {
-		t.Errorf("expected openapi_spec 'openapi.spec3.json', got %q", def.OpenAPISpec)
-	}
-
-	// Verify OpenAPI-derived resources exist
-	expectedResources := []struct {
-		key    string
-		path   string
-		method string
-	}{
-		{"get_customers", "/v1/customers", "GET"},
-		{"post_customers", "/v1/customers", "POST"},
-		{"get_customers_customer", "/v1/customers/{customer}", "GET"},
-		{"delete_customers_customer", "/v1/customers/{customer}", "DELETE"},
-		{"get_charges", "/v1/charges", "GET"},
-		{"post_charges", "/v1/charges", "POST"},
-		{"get_accounts", "/v1/accounts", "GET"},
-		{"post_payment_intents", "/v1/payment_intents", "POST"},
-		{"get_v2_core_accounts_id", "/v2/core/accounts/{id}", "GET"},
-	}
-	for _, exp := range expectedResources {
-		res, ok := def.Resources[exp.key]
-		if !ok {
-			t.Errorf("expected resource %q to exist", exp.key)
-			continue
-		}
-		if res.Path != exp.path {
-			t.Errorf("resource %q: expected path %q, got %q", exp.key, exp.path, res.Path)
-		}
-		if res.Method != exp.method {
-			t.Errorf("resource %q: expected method %q, got %q", exp.key, exp.method, res.Method)
-		}
-	}
-
-	// Verify we got a substantial number of resources (spec has 616 operations)
-	if len(def.Resources) < 500 {
-		t.Errorf("expected at least 500 resources from OpenAPI spec, got %d", len(def.Resources))
+	if def.OpenAPIURL == "" {
+		t.Error("expected openapi_url to be set")
 	}
 }
 

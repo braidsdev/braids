@@ -5,35 +5,70 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 )
 
 var configVarPattern = regexp.MustCompile(`\$\{(\w+)\}`)
 
+// pathParamPattern matches {name} placeholders in resource paths.
+var pathParamPattern = regexp.MustCompile(`\{(\w+)\}`)
+
+// substitutePath replaces {name} placeholders in a path with values from pathParams.
+func substitutePath(path string, pathParams map[string]string) string {
+	if len(pathParams) == 0 {
+		return path
+	}
+	return pathParamPattern.ReplaceAllStringFunc(path, func(match string) string {
+		name := pathParamPattern.FindStringSubmatch(match)[1]
+		if val, ok := pathParams[name]; ok {
+			return val
+		}
+		return match
+	})
+}
+
 // Fetch retrieves all records for a resource, handling auth and pagination.
-func (c *ConnectorEngine) Fetch(resource string) ([]Record, error) {
+// Static query parameters from params and headers are included on every request.
+// pathParams substitutes {name} placeholders in the resource path.
+func (c *ConnectorEngine) Fetch(resource string, params map[string]any, pathParams map[string]string, headers ...map[string]string) ([]Record, error) {
 	res, ok := c.def.Resources[resource]
 	if !ok {
 		return nil, fmt.Errorf("resource %q not found in connector %q", resource, c.def.Name)
 	}
 
 	baseURL := c.substituteVars(c.def.BaseURL)
-	url := baseURL + res.Path
+	resolvedPath := substitutePath(res.Path, pathParams)
+	fetchURL := baseURL + resolvedPath
+
+	// Build static query params from source config
+	staticParams := buildQueryParams(params)
+
+	if len(staticParams) > 0 {
+		fetchURL += "?" + staticParams.Encode()
+	}
 
 	var allRecords []Record
 
 	for {
-		req, err := http.NewRequest(res.Method, url, nil)
+		req, err := http.NewRequest(res.Method, fetchURL, nil)
 		if err != nil {
 			return nil, fmt.Errorf("creating request: %w", err)
 		}
 
 		c.addAuth(req)
 
+		// Apply static headers from source config
+		if len(headers) > 0 && headers[0] != nil {
+			for key, val := range headers[0] {
+				req.Header.Set(key, val)
+			}
+		}
+
 		resp, err := c.client.Do(req)
 		if err != nil {
-			return nil, fmt.Errorf("fetching %s: %w", url, err)
+			return nil, fmt.Errorf("fetching %s: %w", fetchURL, err)
 		}
 
 		body, err := io.ReadAll(resp.Body)
@@ -43,7 +78,7 @@ func (c *ConnectorEngine) Fetch(resource string) ([]Record, error) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("upstream %s returned %d: %s", url, resp.StatusCode, string(body))
+			return nil, fmt.Errorf("upstream %s returned %d: %s", fetchURL, resp.StatusCode, string(body))
 		}
 
 		var parsed any
@@ -61,6 +96,13 @@ func (c *ConnectorEngine) Fetch(resource string) ([]Record, error) {
 		raw, ok := parsed.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("unexpected JSON type in response")
+		}
+
+		// If no data_field is defined and the response is a plain object,
+		// treat it as a single record (e.g. GET /resource/{id}).
+		if res.DataField == "" && c.def.Pagination.DataField == "" {
+			allRecords = append(allRecords, Record(raw))
+			return allRecords, nil
 		}
 
 		records, err := c.extractRecords(raw, res.DataField)
@@ -81,20 +123,62 @@ func (c *ConnectorEngine) Fetch(resource string) ([]Record, error) {
 			if cursor == "" {
 				return allRecords, nil
 			}
-			// Rebuild URL with cursor param
-			url = baseURL + res.Path + "?" + c.def.Pagination.CursorParam + "=" + cursor
+			// Rebuild URL with cursor param, preserving static params
+			paginatedParams := buildQueryParams(params)
+			paginatedParams.Set(c.def.Pagination.CursorParam, cursor)
+			fetchURL = baseURL + resolvedPath + "?" + paginatedParams.Encode()
 
 		case "link_header":
 			nextURL := parseLinkHeaderNext(resp.Header.Get("Link"))
 			if nextURL == "" {
 				return allRecords, nil
 			}
-			url = nextURL
+			fetchURL = nextURL
 
 		default:
 			return allRecords, nil
 		}
 	}
+}
+
+// buildQueryParams converts a map[string]any to url.Values.
+// String values become single params. Array values use the encoding style
+// implied by the key:
+//   - "expand[]": [a, b] → expand[]=a&expand[]=b  (repeated key, v1-style)
+//   - "include":  [a, b] → include[0]=a&include[1]=b (indexed, v2-style)
+func buildQueryParams(params map[string]any) url.Values {
+	vals := url.Values{}
+	for key, val := range params {
+		switch v := val.(type) {
+		case string:
+			vals.Add(key, v)
+		case int:
+			vals.Add(key, fmt.Sprintf("%d", v))
+		case float64:
+			if v == float64(int(v)) {
+				vals.Add(key, fmt.Sprintf("%d", int(v)))
+			} else {
+				vals.Add(key, fmt.Sprintf("%g", v))
+			}
+		case bool:
+			vals.Add(key, fmt.Sprintf("%t", v))
+		case []any:
+			if strings.HasSuffix(key, "[]") {
+				// Repeated key style: expand[]=a&expand[]=b
+				for _, item := range v {
+					vals.Add(key, fmt.Sprintf("%v", item))
+				}
+			} else {
+				// Indexed style: include[0]=a&include[1]=b
+				for i, item := range v {
+					vals.Add(fmt.Sprintf("%s[%d]", key, i), fmt.Sprintf("%v", item))
+				}
+			}
+		default:
+			vals.Add(key, fmt.Sprintf("%v", v))
+		}
+	}
+	return vals
 }
 
 func (c *ConnectorEngine) addAuth(req *http.Request) {

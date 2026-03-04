@@ -67,19 +67,16 @@ func LoadDef(connectorType string, configDir string, explicitPath string) (*conf
 // discovered resources into the connector definition. Explicit resources
 // in connector.yaml take precedence over spec-derived ones.
 func mergeOpenAPIResources(def *config.ConnectorDef, dir string, embedded bool) (*config.ConnectorDef, error) {
-	if def.OpenAPISpec == "" {
+	if def.OpenAPISpec == "" && def.OpenAPIURL == "" {
 		return def, nil
 	}
 
-	var specData []byte
-	var err error
-	if embedded {
-		specData, err = builtinConnectors.ReadFile(filepath.Join(dir, def.OpenAPISpec))
-	} else {
-		specData, err = os.ReadFile(filepath.Join(dir, def.OpenAPISpec))
-	}
+	specData, err := resolveOpenAPISpec(def, dir, embedded)
 	if err != nil {
-		return nil, fmt.Errorf("reading OpenAPI spec %q: %w", def.OpenAPISpec, err)
+		return nil, fmt.Errorf("resolving OpenAPI spec: %w", err)
+	}
+	if specData == nil {
+		return def, nil
 	}
 
 	// Derive the base path from the base_url (e.g. "https://api.stripe.com/v1" -> "/v1")
@@ -98,6 +95,39 @@ func mergeOpenAPIResources(def *config.ConnectorDef, dir string, embedded bool) 
 	}
 
 	return def, nil
+}
+
+// LoadDefWithoutSpec resolves a connector type to its definition without
+// triggering OpenAPI spec resolution. This is useful for reading connector
+// metadata (e.g. openapi_url) without downloading specs.
+func LoadDefWithoutSpec(connectorType string, configDir string, explicitPath string) (*config.ConnectorDef, error) {
+	if explicitPath != "" {
+		dir := explicitPath
+		if !filepath.IsAbs(dir) {
+			dir = filepath.Join(configDir, dir)
+		}
+		data, err := os.ReadFile(filepath.Join(dir, "connector.yaml"))
+		if err != nil {
+			return nil, fmt.Errorf("reading connector at path %q: %w", dir, err)
+		}
+		return config.LoadConnectorDef(data)
+	}
+
+	connectorDir := filepath.Join("connectors", connectorType)
+
+	data, err := builtinConnectors.ReadFile(filepath.Join(connectorDir, "connector.yaml"))
+	if err == nil {
+		return config.LoadConnectorDef(data)
+	}
+
+	localDir := filepath.Join(configDir, "connectors", connectorType)
+	localPath := filepath.Join(localDir, "connector.yaml")
+	data, err = os.ReadFile(localPath)
+	if err == nil {
+		return config.LoadConnectorDef(data)
+	}
+
+	return nil, fmt.Errorf("connector %q not found (checked built-in and %s)", connectorType, localPath)
 }
 
 // extractBasePath extracts the path portion from a URL.

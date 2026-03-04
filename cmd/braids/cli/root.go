@@ -10,6 +10,7 @@ var (
 	appVersion string
 	appCommit  string
 	configFile string
+	debugMode  bool
 )
 
 func Execute(version, commit string) error {
@@ -34,5 +35,6 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "braids.yaml", "path to braids.yaml config file")
+	rootCmd.PersistentFlags().BoolVar(&debugMode, "debug", false, "enable verbose request/response logging")
 	rootCmd.AddCommand(versionCmd)
 }

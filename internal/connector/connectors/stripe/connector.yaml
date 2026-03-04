@@ -1,6 +1,7 @@
 name: stripe
 version: "1.0"
-base_url: https://api.stripe.com/v1
+base_url: https://api.stripe.com
+openapi_url: https://raw.githubusercontent.com/stripe/openapi/refs/heads/master/latest/openapi.spec3.json
 auth:
   type: bearer
   token_field: api_key
@@ -10,10 +11,3 @@ pagination:
   cursor_field: id
   has_more_field: has_more
   data_field: data
-resources:
-  customers:
-    path: /customers
-    method: GET
-  charges:
-    path: /charges
-    method: GET

@@ -128,6 +128,151 @@ func TestHandleRequestEndToEnd(t *testing.T) {
 	}
 }
 
+func TestHandleRequestParameterizedRoute(t *testing.T) {
+	// Mock upstream that echoes back the requested path
+	var upstreamPath string
+	mock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upstreamPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"id":           "acct_123",
+			"display_name": "Test Account",
+			"country":      "US",
+			"email":        "test@example.com",
+		})
+	}))
+	defer mock.Close()
+
+	connDef := &config.ConnectorDef{
+		Name:    "test",
+		Version: "1.0",
+		BaseURL: mock.URL,
+		Auth:    config.AuthDef{Type: "bearer", TokenField: "api_key"},
+		Resources: map[string]config.ResourceDef{
+			"get_account": {Path: "/v2/core/accounts/{id}", Method: "GET"},
+		},
+	}
+
+	cfg := &config.Config{
+		Version: "1",
+		Connectors: map[string]config.ConnectorRef{
+			"test": {Type: "test", Config: map[string]string{"api_key": "sk_test"}},
+		},
+		Schemas: map[string]config.Schema{
+			"account": {
+				Fields: map[string]config.Field{
+					"id":           {Type: "string"},
+					"display_name": {Type: "string"},
+					"country":      {Type: "string"},
+					"email":        {Type: "string"},
+				},
+			},
+		},
+		Endpoints: map[string]config.Endpoint{
+			"/accounts/{id}": {
+				Schema: "account",
+				Sources: []config.Source{
+					{
+						Connector: "test",
+						Resource:  "get_account",
+						Mapping: map[string]string{
+							"id":           "id",
+							"display_name": "display_name",
+							"country":      "country",
+							"email":        "email",
+						},
+					},
+				},
+			},
+		},
+		Server: config.Server{Port: 0},
+	}
+
+	g := &Gateway{
+		cfg: cfg,
+		engines: map[string]*connector.ConnectorEngine{
+			"test": connector.New(connDef, map[string]string{"api_key": "sk_test"}),
+		},
+	}
+
+	req := httptest.NewRequest("GET", "/accounts/acct_123", nil)
+	w := httptest.NewRecorder()
+	g.handleRequest(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Verify path param was substituted in upstream URL
+	if upstreamPath != "/v2/core/accounts/acct_123" {
+		t.Errorf("expected upstream path /v2/core/accounts/acct_123, got %s", upstreamPath)
+	}
+
+	var resp map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("invalid JSON response: %v", err)
+	}
+
+	data, ok := resp["data"].([]any)
+	if !ok {
+		t.Fatal("expected data array in response")
+	}
+	if len(data) != 1 {
+		t.Errorf("expected 1 record, got %d", len(data))
+	}
+
+	first := data[0].(map[string]any)
+	if first["id"] != "acct_123" {
+		t.Errorf("expected id 'acct_123', got %v", first["id"])
+	}
+	if first["display_name"] != "Test Account" {
+		t.Errorf("expected display_name 'Test Account', got %v", first["display_name"])
+	}
+}
+
+func TestMatchEndpoint(t *testing.T) {
+	endpoints := map[string]config.Endpoint{
+		"/customers":     {Schema: "customer"},
+		"/accounts/{id}": {Schema: "account"},
+	}
+
+	// Static match
+	ep, params, ok := matchEndpoint("/customers", endpoints)
+	if !ok {
+		t.Fatal("expected /customers to match")
+	}
+	if ep.Schema != "customer" {
+		t.Errorf("expected schema 'customer', got %q", ep.Schema)
+	}
+	if len(params) != 0 {
+		t.Errorf("expected no params for static match, got %v", params)
+	}
+
+	// Parameterized match
+	ep, params, ok = matchEndpoint("/accounts/acct_456", endpoints)
+	if !ok {
+		t.Fatal("expected /accounts/acct_456 to match")
+	}
+	if ep.Schema != "account" {
+		t.Errorf("expected schema 'account', got %q", ep.Schema)
+	}
+	if params["id"] != "acct_456" {
+		t.Errorf("expected id=acct_456, got %v", params)
+	}
+
+	// No match
+	_, _, ok = matchEndpoint("/nonexistent", endpoints)
+	if ok {
+		t.Error("expected /nonexistent to not match")
+	}
+
+	// Wrong segment count
+	_, _, ok = matchEndpoint("/accounts/acct_1/extra", endpoints)
+	if ok {
+		t.Error("expected /accounts/acct_1/extra to not match")
+	}
+}
+
 func TestHandleRequestNotFound(t *testing.T) {
 	g := &Gateway{
 		cfg: &config.Config{

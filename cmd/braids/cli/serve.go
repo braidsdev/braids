@@ -21,6 +21,7 @@ var serveCmd = &cobra.Command{
 			return fmt.Errorf("initializing gateway: %w", err)
 		}
 		gw.Version = appVersion
+		gw.Debug = debugMode
 
 		// Graceful shutdown on SIGINT/SIGTERM
 		stop := make(chan os.Signal, 1)

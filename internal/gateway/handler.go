@@ -4,23 +4,66 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/braidsdev/braids/internal/config"
 	"github.com/braidsdev/braids/internal/connector"
 	"github.com/braidsdev/braids/internal/schema"
 )
 
+// matchEndpoint finds the endpoint matching the request path.
+// It tries an exact match first (fast path), then falls back to
+// segment-by-segment pattern matching where {name} segments are wildcards.
+func matchEndpoint(path string, endpoints map[string]config.Endpoint) (config.Endpoint, map[string]string, bool) {
+	// Fast path: exact match for static endpoints
+	if ep, ok := endpoints[path]; ok {
+		return ep, nil, true
+	}
+
+	reqSegments := strings.Split(strings.Trim(path, "/"), "/")
+
+	for pattern, ep := range endpoints {
+		patSegments := strings.Split(strings.Trim(pattern, "/"), "/")
+		if len(patSegments) != len(reqSegments) {
+			continue
+		}
+
+		params := map[string]string{}
+		matched := true
+		for i, pat := range patSegments {
+			if strings.HasPrefix(pat, "{") && strings.HasSuffix(pat, "}") {
+				name := pat[1 : len(pat)-1]
+				params[name] = reqSegments[i]
+			} else if pat != reqSegments[i] {
+				matched = false
+				break
+			}
+		}
+		if matched && len(params) > 0 {
+			return ep, params, true
+		}
+	}
+
+	return config.Endpoint{}, nil, false
+}
+
 func (g *Gateway) handleRequest(w http.ResponseWriter, r *http.Request) {
 	g.mu.RLock()
 	cfg := g.cfg
 	engines := g.engines
+	debug := g.Debug
 	g.mu.RUnlock()
 
-	ep, ok := cfg.Endpoints[r.URL.Path]
+	ep, pathParams, ok := matchEndpoint(r.URL.Path, cfg.Endpoints)
 	if !ok {
 		http.NotFound(w, r)
 		return
+	}
+
+	if debug {
+		log.Printf("[DEBUG] Incoming: %s %s → matched endpoint, pathParams=%v", r.Method, r.URL.Path, pathParams)
 	}
 
 	schemaDef, ok := cfg.Schemas[ep.Schema]
@@ -49,7 +92,12 @@ func (g *Gateway) handleRequest(w http.ResponseWriter, r *http.Request) {
 				results[idx] = sourceResult{index: idx, name: src.Connector, err: errConnectorNotFound(src.Connector)}
 				return
 			}
-			records, err := engine.Fetch(src.Resource)
+			start := time.Now()
+			records, err := engine.Fetch(src.Resource, src.Params, pathParams, src.Headers)
+			if debug {
+				log.Printf("[DEBUG] Source %s/%s: %d records, %v elapsed, err=%v",
+					src.Connector, src.Resource, len(records), time.Since(start), err)
+			}
 			results[idx] = sourceResult{index: idx, name: src.Connector, records: records, err: err}
 		}(i, src)
 	}
