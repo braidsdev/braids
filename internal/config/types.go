@@ -12,6 +12,7 @@ type Config struct {
 
 type ConnectorRef struct {
 	Type   string            `yaml:"type"`
+	Path   string            `yaml:"path"`
 	Config map[string]string `yaml:"config"`
 }
 
@@ -33,6 +34,8 @@ type Endpoint struct {
 type Source struct {
 	Connector string            `yaml:"connector"`
 	Resource  string            `yaml:"resource"`
+	Params    map[string]any    `yaml:"params"`
+	Headers   map[string]string `yaml:"headers"`
 	Mapping   map[string]string `yaml:"mapping"`
 }
 
@@ -44,12 +47,14 @@ type Server struct {
 // connector.yaml types
 
 type ConnectorDef struct {
-	Name       string                 `yaml:"name"`
-	Version    string                 `yaml:"version"`
-	BaseURL    string                 `yaml:"base_url"`
-	Auth       AuthDef                `yaml:"auth"`
-	Pagination PaginationDef          `yaml:"pagination"`
-	Resources  map[string]ResourceDef `yaml:"resources"`
+	Name        string                 `yaml:"name"`
+	Version     string                 `yaml:"version"`
+	BaseURL     string                 `yaml:"base_url"`
+	OpenAPISpec string                 `yaml:"openapi_spec"`
+	OpenAPIURL  string                 `yaml:"openapi_url"`
+	Auth        AuthDef                `yaml:"auth"`
+	Pagination  PaginationDef          `yaml:"pagination"`
+	Resources   map[string]ResourceDef `yaml:"resources"`
 }
 
 type AuthDef struct {

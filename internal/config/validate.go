@@ -20,6 +20,9 @@ func Validate(cfg *Config) error {
 		if conn.Type == "" {
 			errs = append(errs, fmt.Sprintf("connector %q: type is required", name))
 		}
+		if conn.Type == "path" && conn.Path == "" {
+			errs = append(errs, fmt.Sprintf("connector %q: path is required when type is \"path\"", name))
+		}
 	}
 
 	if len(cfg.Schemas) == 0 {

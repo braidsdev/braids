@@ -55,6 +55,34 @@ func TestValidateUnknownSchema(t *testing.T) {
 	}
 }
 
+func TestValidatePathConnectorMissingPath(t *testing.T) {
+	cfg := &Config{
+		Version: "1",
+		Connectors: map[string]ConnectorRef{
+			"custom": {Type: "path"},
+		},
+		Schemas:   map[string]Schema{"c": {Fields: map[string]Field{"id": {Type: "string"}}}},
+		Endpoints: map[string]Endpoint{"/c": {Schema: "c", Sources: []Source{{Connector: "custom", Resource: "r", Mapping: map[string]string{"id": "id"}}}}},
+	}
+	if err := Validate(cfg); err == nil {
+		t.Error("expected error for path connector without path")
+	}
+}
+
+func TestValidatePathConnectorWithPath(t *testing.T) {
+	cfg := &Config{
+		Version: "1",
+		Connectors: map[string]ConnectorRef{
+			"custom": {Type: "path", Path: "./my-connectors/custom"},
+		},
+		Schemas:   map[string]Schema{"c": {Fields: map[string]Field{"id": {Type: "string"}}}},
+		Endpoints: map[string]Endpoint{"/c": {Schema: "c", Sources: []Source{{Connector: "custom", Resource: "r", Mapping: map[string]string{"id": "id"}}}}},
+	}
+	if err := Validate(cfg); err != nil {
+		t.Errorf("expected valid config, got: %v", err)
+	}
+}
+
 func TestValidateUnknownConnector(t *testing.T) {
 	cfg := &Config{
 		Version:    "1",

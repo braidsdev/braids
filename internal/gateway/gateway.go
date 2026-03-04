@@ -19,6 +19,7 @@ import (
 // Gateway is the HTTP server that serves unified API endpoints.
 type Gateway struct {
 	Version    string
+	Debug      bool
 	configPath string
 	configDir  string
 	cfg        *config.Config
@@ -57,7 +58,7 @@ func (g *Gateway) loadConfig() error {
 
 	engines := make(map[string]*connector.ConnectorEngine, len(cfg.Connectors))
 	for name, ref := range cfg.Connectors {
-		def, err := connector.LoadDef(ref.Type, g.configDir)
+		def, err := connector.LoadDef(ref.Type, g.configDir, ref.Path)
 		if err != nil {
 			return fmt.Errorf("loading connector %q: %w", name, err)
 		}
