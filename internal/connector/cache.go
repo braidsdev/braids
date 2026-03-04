@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -64,7 +65,12 @@ func downloadAndCacheSpec(specURL string) ([]byte, error) {
 
 	// Write to cache (non-fatal on failure)
 	if dir, err := cacheDir(); err == nil {
-		_ = os.WriteFile(filepath.Join(dir, cacheKeyForURL(specURL)), data, 0644)
+		cachePath := filepath.Join(dir, cacheKeyForURL(specURL))
+		if err := os.WriteFile(cachePath, data, 0644); err != nil {
+			log.Printf("Warning: failed to cache OpenAPI spec: %v", err)
+		} else {
+			log.Printf("Cached OpenAPI spec (%d bytes) to %s", len(data), cachePath)
+		}
 	}
 
 	return data, nil
@@ -76,6 +82,7 @@ func downloadAndCacheSpec(specURL string) ([]byte, error) {
 func resolveOpenAPISpec(def *config.ConnectorDef, dir string, embedded bool) ([]byte, error) {
 	// Local file takes priority
 	if def.OpenAPISpec != "" {
+		log.Printf("Loading OpenAPI spec from local file: %s", def.OpenAPISpec)
 		if embedded {
 			return builtinConnectors.ReadFile(filepath.Join(dir, def.OpenAPISpec))
 		}
@@ -85,8 +92,10 @@ func resolveOpenAPISpec(def *config.ConnectorDef, dir string, embedded bool) ([]
 	// Try URL: cached first, then download
 	if def.OpenAPIURL != "" {
 		if data, ok := loadCachedSpec(def.OpenAPIURL); ok {
+			log.Printf("Using cached OpenAPI spec for %s", def.OpenAPIURL)
 			return data, nil
 		}
+		log.Printf("Downloading OpenAPI spec from %s ...", def.OpenAPIURL)
 		return downloadAndCacheSpec(def.OpenAPIURL)
 	}
 
