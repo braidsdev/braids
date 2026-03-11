@@ -1,0 +1,23 @@
+name: gitlab
+description: DevOps platform for the complete software development lifecycle
+category: developer-tools
+tags: [git, ci-cd, devops, repositories]
+version: "1.0"
+base_url: https://gitlab.com/api/v4
+openapi_url: https://gitlab.com/gitlab-org/gitlab/-/raw/master/doc/api/openapi/openapi.yaml
+auth:
+  type: header
+  header_name: PRIVATE-TOKEN
+  token_field: token
+pagination:
+  type: link_header
+resources:
+  projects:
+    path: /projects
+    method: GET
+  issues:
+    path: /projects/{id}/issues
+    method: GET
+  merge_requests:
+    path: /projects/{id}/merge_requests
+    method: GET

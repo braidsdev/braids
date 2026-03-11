@@ -1,0 +1,25 @@
+name: digitalocean
+description: Cloud infrastructure provider for developers
+category: cloud-infrastructure
+tags: [cloud, vps, kubernetes, hosting]
+version: "1.0"
+base_url: https://api.digitalocean.com/v2
+openapi_url: https://api-engineering.nyc3.cdn.digitaloceanspaces.com/spec-ci/DigitalOcean-public.v2.yaml
+auth:
+  type: bearer
+  token_field: token
+pagination:
+  type: link_header
+resources:
+  droplets:
+    path: /droplets
+    method: GET
+    data_field: droplets
+  domains:
+    path: /domains
+    method: GET
+    data_field: domains
+  databases:
+    path: /databases
+    method: GET
+    data_field: databases

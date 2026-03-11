@@ -1,0 +1,25 @@
+name: vercel
+description: Frontend deployment and serverless platform
+category: cloud-infrastructure
+tags: [deployment, serverless, hosting, frontend]
+version: "1.0"
+base_url: https://api.vercel.com
+openapi_url: https://openapi.vercel.sh
+auth:
+  type: bearer
+  token_field: token
+pagination:
+  type: none
+resources:
+  projects:
+    path: /v9/projects
+    method: GET
+    data_field: projects
+  deployments:
+    path: /v6/deployments
+    method: GET
+    data_field: deployments
+  domains:
+    path: /v5/domains
+    method: GET
+    data_field: domains

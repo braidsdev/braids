@@ -1,0 +1,24 @@
+name: discord
+description: Voice, video, and text communication platform
+category: communication
+tags: [messaging, chat, voice, gaming]
+version: "1.0"
+base_url: https://discord.com/api/v10
+openapi_url: https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json
+auth:
+  type: header
+  header_name: Authorization
+  token_field: token
+  token_prefix: "Bot "
+pagination:
+  type: none
+resources:
+  guilds:
+    path: /users/@me/guilds
+    method: GET
+  channels:
+    path: /guilds/{guild_id}/channels
+    method: GET
+  members:
+    path: /guilds/{guild_id}/members
+    method: GET

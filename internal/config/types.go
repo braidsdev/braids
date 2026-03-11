@@ -11,9 +11,22 @@ type Config struct {
 }
 
 type ConnectorRef struct {
-	Type   string            `yaml:"type"`
-	Path   string            `yaml:"path"`
-	Config map[string]string `yaml:"config"`
+	Type      string                      `yaml:"type"`
+	Path      string                      `yaml:"path"`
+	Config    map[string]string           `yaml:"config"`
+	Resources map[string]ResourceOverride `yaml:"resources"`
+}
+
+// ResourceOverride allows instance-level resource definitions in braids.yaml.
+// Used for protocols where queries/collections are user-specific (databases, GraphQL).
+type ResourceOverride struct {
+	Query      string `yaml:"query"`       // SQL query or GraphQL query
+	Collection string `yaml:"collection"`  // MongoDB collection
+	Filter     string `yaml:"filter"`      // MongoDB filter (JSON)
+	Method     string `yaml:"method"`      // HTTP method or gRPC method
+	Service    string `yaml:"service"`     // gRPC service name
+	DataField  string `yaml:"data_field"`
+	Path       string `yaml:"path"`        // URL path override
 }
 
 type Schema struct {
@@ -48,7 +61,11 @@ type Server struct {
 
 type ConnectorDef struct {
 	Name        string                 `yaml:"name"`
+	Description string                 `yaml:"description"`
+	Category    string                 `yaml:"category"`
+	Tags        []string               `yaml:"tags"`
 	Version     string                 `yaml:"version"`
+	Protocol    string                 `yaml:"protocol"` // http (default), graphql, soap, postgres, mysql, mongodb, grpc
 	BaseURL     string                 `yaml:"base_url"`
 	OpenAPISpec string                 `yaml:"openapi_spec"`
 	OpenAPIURL  string                 `yaml:"openapi_url"`
@@ -58,21 +75,36 @@ type ConnectorDef struct {
 }
 
 type AuthDef struct {
-	Type       string `yaml:"type"`
-	TokenField string `yaml:"token_field"`
-	HeaderName string `yaml:"header_name"`
+	Type          string            `yaml:"type"`           // bearer, header, basic, query_param, none
+	TokenField    string            `yaml:"token_field"`
+	HeaderName    string            `yaml:"header_name"`
+	TokenPrefix   string            `yaml:"token_prefix"`   // e.g. "Bot " for Discord
+	UsernameField string            `yaml:"username_field"` // for basic auth
+	PasswordField string            `yaml:"password_field"` // for basic auth
+	ParamName     string            `yaml:"param_name"`     // for query_param auth
+	ExtraHeaders  map[string]string `yaml:"extra_headers"`  // field_name -> header_name mapping
 }
 
 type PaginationDef struct {
-	Type         string `yaml:"type"`
+	Type         string `yaml:"type"` // cursor, link_header, offset, page, none
 	CursorParam  string `yaml:"cursor_param"`
 	CursorField  string `yaml:"cursor_field"`
 	HasMoreField string `yaml:"has_more_field"`
 	DataField    string `yaml:"data_field"`
+	LimitParam   string `yaml:"limit_param"`    // for offset/page pagination
+	LimitDefault int    `yaml:"limit_default"`  // default page size
+	OffsetParam  string `yaml:"offset_param"`   // for offset pagination
+	TotalField   string `yaml:"total_field"`    // total count field in response
+	PageParam    string `yaml:"page_param"`     // for page pagination
+	ResultsField string `yaml:"results_field"`  // some APIs nest results differently per-page
 }
 
 type ResourceDef struct {
-	Path      string `yaml:"path"`
-	Method    string `yaml:"method"`
-	DataField string `yaml:"data_field"`
+	Path       string `yaml:"path"`
+	Method     string `yaml:"method"`
+	DataField  string `yaml:"data_field"`
+	Query      string `yaml:"query"`       // SQL query or GraphQL query
+	Collection string `yaml:"collection"`  // MongoDB collection
+	Filter     string `yaml:"filter"`      // MongoDB filter (JSON)
+	Service    string `yaml:"service"`     // gRPC service name
 }

@@ -1,0 +1,28 @@
+name: slack
+description: Business communication and messaging platform
+category: communication
+tags: [messaging, chat, team-communication]
+version: "1.0"
+base_url: https://slack.com/api
+openapi_url: https://raw.githubusercontent.com/slackapi/slack-api-specs/master/web-api/slack_web_openapi_v2.json
+auth:
+  type: bearer
+  token_field: token
+pagination:
+  type: cursor
+  cursor_param: cursor
+  cursor_field: response_metadata.next_cursor
+  has_more_field: has_more
+resources:
+  channels:
+    path: /conversations.list
+    method: GET
+    data_field: channels
+  users:
+    path: /users.list
+    method: GET
+    data_field: members
+  messages:
+    path: /conversations.history
+    method: GET
+    data_field: messages

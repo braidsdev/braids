@@ -1,0 +1,25 @@
+name: jira
+description: Issue tracking and project management for software teams
+category: project-management
+tags: [issues, agile, project-management, atlassian]
+version: "1.0"
+base_url: https://${domain}.atlassian.net/rest/api/3
+openapi_url: https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json
+auth:
+  type: basic
+  username_field: email
+  password_field: api_token
+pagination:
+  type: offset
+  offset_param: startAt
+  limit_param: maxResults
+  limit_default: 50
+  total_field: total
+resources:
+  issues:
+    path: /search
+    method: GET
+    data_field: issues
+  projects:
+    path: /project
+    method: GET

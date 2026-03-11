@@ -1,0 +1,30 @@
+name: pagerduty
+description: Incident management and on-call scheduling platform
+category: observability
+tags: [incidents, on-call, alerting, monitoring]
+version: "1.0"
+base_url: https://api.pagerduty.com
+auth:
+  type: header
+  header_name: Authorization
+  token_field: api_key
+  token_prefix: "Token token="
+pagination:
+  type: offset
+  offset_param: offset
+  limit_param: limit
+  limit_default: 25
+  total_field: total
+resources:
+  incidents:
+    path: /incidents
+    method: GET
+    data_field: incidents
+  services:
+    path: /services
+    method: GET
+    data_field: services
+  users:
+    path: /users
+    method: GET
+    data_field: users

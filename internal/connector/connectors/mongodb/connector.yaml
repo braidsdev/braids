@@ -1,0 +1,7 @@
+name: mongodb
+description: MongoDB database
+category: databases
+tags: [database, nosql, mongodb]
+protocol: mongodb
+auth:
+  type: none

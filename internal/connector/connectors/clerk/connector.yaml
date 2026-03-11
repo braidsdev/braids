@@ -1,0 +1,24 @@
+name: clerk
+description: Authentication and user management platform
+category: authentication
+tags: [auth, users, sessions, identity]
+version: "1.0"
+base_url: https://api.clerk.com/v1
+auth:
+  type: bearer
+  token_field: secret_key
+pagination:
+  type: none
+resources:
+  users:
+    path: /users
+    method: GET
+    data_field: data
+  sessions:
+    path: /sessions
+    method: GET
+    data_field: data
+  organizations:
+    path: /organizations
+    method: GET
+    data_field: data

@@ -13,11 +13,11 @@ import (
 )
 
 // PrintBanner writes a formatted startup banner to stdout.
-func PrintBanner(cfg *config.Config, engines map[string]*connector.ConnectorEngine, version string, configPath string) {
+func PrintBanner(cfg *config.Config, engines map[string]connector.Fetcher, version string, configPath string) {
 	printBanner(os.Stdout, cfg, engines, version, configPath)
 }
 
-func printBanner(w io.Writer, cfg *config.Config, engines map[string]*connector.ConnectorEngine, version string, configPath string) {
+func printBanner(w io.Writer, cfg *config.Config, engines map[string]connector.Fetcher, version string, configPath string) {
 	port := cfg.Server.Port
 	if port == 0 {
 		port = 8080

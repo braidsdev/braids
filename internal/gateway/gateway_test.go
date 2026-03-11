@@ -84,8 +84,8 @@ func TestHandleRequestEndToEnd(t *testing.T) {
 
 	g := &Gateway{
 		cfg: cfg,
-		engines: map[string]*connector.ConnectorEngine{
-			"test": connector.New(connDef, map[string]string{"api_key": "sk_test"}),
+		engines: map[string]connector.Fetcher{
+			"test": connector.NewHTTPFetcher(connDef, map[string]string{"api_key": "sk_test"}),
 		},
 	}
 
@@ -190,8 +190,8 @@ func TestHandleRequestParameterizedRoute(t *testing.T) {
 
 	g := &Gateway{
 		cfg: cfg,
-		engines: map[string]*connector.ConnectorEngine{
-			"test": connector.New(connDef, map[string]string{"api_key": "sk_test"}),
+		engines: map[string]connector.Fetcher{
+			"test": connector.NewHTTPFetcher(connDef, map[string]string{"api_key": "sk_test"}),
 		},
 	}
 
@@ -278,7 +278,7 @@ func TestHandleRequestNotFound(t *testing.T) {
 		cfg: &config.Config{
 			Endpoints: map[string]config.Endpoint{},
 		},
-		engines: map[string]*connector.ConnectorEngine{},
+		engines: map[string]connector.Fetcher{},
 	}
 
 	req := httptest.NewRequest("GET", "/nonexistent", nil)

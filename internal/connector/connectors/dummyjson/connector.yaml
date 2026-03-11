@@ -1,4 +1,7 @@
 name: dummyjson
+description: Fake REST API for testing and prototyping
+category: testing
+tags: [testing, mock, fake-data]
 version: "1.0"
 base_url: https://dummyjson.com
 auth:

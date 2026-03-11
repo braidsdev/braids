@@ -1,0 +1,21 @@
+name: zoom
+description: Video conferencing and online meetings platform
+category: communication
+tags: [video, meetings, conferencing]
+version: "1.0"
+base_url: https://api.zoom.us/v2
+openapi_url: https://marketplace.zoom.us/docs/api-reference/zoom-api/openapi.json
+auth:
+  type: bearer
+  token_field: token
+pagination:
+  type: none
+resources:
+  users:
+    path: /users
+    method: GET
+    data_field: users
+  meetings:
+    path: /users/{user_id}/meetings
+    method: GET
+    data_field: meetings

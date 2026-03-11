@@ -1,0 +1,26 @@
+name: cloudflare
+description: Web performance and security platform
+category: cloud-infrastructure
+tags: [cdn, dns, security, workers]
+version: "1.0"
+base_url: https://api.cloudflare.com/client/v4
+openapi_url: https://raw.githubusercontent.com/cloudflare/api-schemas/main/openapi.json
+auth:
+  type: bearer
+  token_field: api_token
+pagination:
+  type: page
+  page_param: page
+  limit_param: per_page
+  limit_default: 20
+  total_field: result_info.total_count
+  data_field: result
+resources:
+  zones:
+    path: /zones
+    method: GET
+    data_field: result
+  dns_records:
+    path: /zones/{zone_id}/dns_records
+    method: GET
+    data_field: result

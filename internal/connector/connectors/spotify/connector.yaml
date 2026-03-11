@@ -1,0 +1,29 @@
+name: spotify
+description: Music streaming and audio content platform
+category: media
+tags: [music, streaming, audio, playlists]
+version: "1.0"
+base_url: https://api.spotify.com/v1
+openapi_url: https://raw.githubusercontent.com/sonallux/spotify-web-api/main/fixed-spotify-open-api.yml
+auth:
+  type: bearer
+  token_field: access_token
+pagination:
+  type: offset
+  offset_param: offset
+  limit_param: limit
+  limit_default: 20
+  total_field: total
+resources:
+  playlists:
+    path: /me/playlists
+    method: GET
+    data_field: items
+  tracks:
+    path: /playlists/{playlist_id}/tracks
+    method: GET
+    data_field: items
+  albums:
+    path: /me/albums
+    method: GET
+    data_field: items

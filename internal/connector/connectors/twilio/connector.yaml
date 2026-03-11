@@ -1,0 +1,22 @@
+name: twilio
+description: Cloud communications platform for SMS, voice, and messaging
+category: communication
+tags: [sms, voice, messaging, telephony]
+version: "1.0"
+base_url: https://api.twilio.com/2010-04-01
+openapi_url: https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json
+auth:
+  type: basic
+  username_field: account_sid
+  password_field: auth_token
+pagination:
+  type: none
+resources:
+  messages:
+    path: /Accounts/${account_sid}/Messages.json
+    method: GET
+    data_field: messages
+  calls:
+    path: /Accounts/${account_sid}/Calls.json
+    method: GET
+    data_field: calls

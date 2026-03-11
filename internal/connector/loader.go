@@ -130,6 +130,44 @@ func LoadDefWithoutSpec(connectorType string, configDir string, explicitPath str
 	return nil, fmt.Errorf("connector %q not found (checked built-in and %s)", connectorType, localPath)
 }
 
+// ConnectorInfo holds summary metadata about a built-in connector.
+type ConnectorInfo struct {
+	Name        string
+	Description string
+	Category    string
+	Tags        []string
+}
+
+// ListBuiltinConnectors returns metadata for all embedded built-in connectors.
+func ListBuiltinConnectors() ([]ConnectorInfo, error) {
+	entries, err := builtinConnectors.ReadDir("connectors")
+	if err != nil {
+		return nil, fmt.Errorf("reading embedded connectors: %w", err)
+	}
+
+	var connectors []ConnectorInfo
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		data, err := builtinConnectors.ReadFile(fmt.Sprintf("connectors/%s/connector.yaml", entry.Name()))
+		if err != nil {
+			continue
+		}
+		def, err := config.LoadConnectorDef(data)
+		if err != nil {
+			continue
+		}
+		connectors = append(connectors, ConnectorInfo{
+			Name:        def.Name,
+			Description: def.Description,
+			Category:    def.Category,
+			Tags:        def.Tags,
+		})
+	}
+	return connectors, nil
+}
+
 // extractBasePath extracts the path portion from a URL.
 // e.g. "https://api.stripe.com/v1" -> "/v1"
 func extractBasePath(baseURL string) string {

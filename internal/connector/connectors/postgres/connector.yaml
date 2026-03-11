@@ -1,0 +1,7 @@
+name: postgres
+description: PostgreSQL database
+category: databases
+tags: [database, sql, postgres]
+protocol: postgres
+auth:
+  type: none

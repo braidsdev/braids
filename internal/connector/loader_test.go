@@ -159,3 +159,30 @@ func TestLoadDefExplicitPathNotFound(t *testing.T) {
 		t.Error("expected error for nonexistent explicit path")
 	}
 }
+
+func TestListBuiltinConnectors(t *testing.T) {
+	connectors, err := ListBuiltinConnectors()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(connectors) != 32 {
+		t.Errorf("expected 32 connectors, got %d", len(connectors))
+		for _, c := range connectors {
+			t.Logf("  %s (%s)", c.Name, c.Category)
+		}
+	}
+
+	// Verify all connectors have required metadata
+	for _, c := range connectors {
+		if c.Name == "" {
+			t.Error("found connector with empty name")
+		}
+		if c.Description == "" {
+			t.Errorf("connector %q has empty description", c.Name)
+		}
+		if c.Category == "" {
+			t.Errorf("connector %q has empty category", c.Name)
+		}
+	}
+}

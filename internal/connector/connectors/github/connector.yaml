@@ -1,0 +1,23 @@
+name: github
+description: Developer platform for version control and collaboration
+category: developer-tools
+tags: [git, repositories, issues, pull-requests]
+version: "1.0"
+base_url: https://api.github.com
+openapi_url: https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json
+auth:
+  type: bearer
+  token_field: token
+pagination:
+  type: link_header
+  data_field: ""
+resources:
+  repos:
+    path: /user/repos
+    method: GET
+  issues:
+    path: /repos/{owner}/{repo}/issues
+    method: GET
+  pulls:
+    path: /repos/{owner}/{repo}/pulls
+    method: GET

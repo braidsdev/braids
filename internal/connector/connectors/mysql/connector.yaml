@@ -1,0 +1,7 @@
+name: mysql
+description: MySQL database
+category: databases
+tags: [database, sql, mysql]
+protocol: mysql
+auth:
+  type: none

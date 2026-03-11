@@ -1,0 +1,28 @@
+name: plaid
+description: Financial data and banking API platform
+category: payments
+tags: [banking, finance, transactions]
+version: "1.0"
+base_url: https://production.plaid.com
+openapi_url: https://raw.githubusercontent.com/plaid/plaid-openapi/master/2020-09-14.yml
+auth:
+  type: header
+  header_name: PLAID-CLIENT-ID
+  token_field: client_id
+  extra_headers:
+    secret: PLAID-SECRET
+pagination:
+  type: none
+resources:
+  accounts:
+    path: /accounts/get
+    method: POST
+    data_field: accounts
+  transactions:
+    path: /transactions/get
+    method: POST
+    data_field: transactions
+  institutions:
+    path: /institutions/get
+    method: POST
+    data_field: institutions

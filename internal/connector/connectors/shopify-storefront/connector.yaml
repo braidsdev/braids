@@ -1,0 +1,10 @@
+name: shopify-storefront
+description: Shopify Storefront GraphQL API
+category: ecommerce
+tags: [ecommerce, shopify, graphql, storefront]
+protocol: graphql
+base_url: https://${store}.myshopify.com/api/2024-01/graphql.json
+auth:
+  type: header
+  header_name: X-Shopify-Storefront-Access-Token
+  token_field: storefront_token

@@ -1,0 +1,18 @@
+name: paypal
+description: Online payment system for money transfers
+category: payments
+tags: [payments, checkout, money-transfer]
+version: "1.0"
+base_url: https://api-m.paypal.com/v2
+auth:
+  type: bearer
+  token_field: access_token
+pagination:
+  type: none
+resources:
+  orders:
+    path: /checkout/orders/{order_id}
+    method: GET
+  payments:
+    path: /payments/captures/{capture_id}
+    method: GET

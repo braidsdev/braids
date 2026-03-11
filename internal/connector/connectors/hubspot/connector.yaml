@@ -1,0 +1,28 @@
+name: hubspot
+description: CRM, marketing, and sales platform
+category: crm
+tags: [crm, marketing, sales, contacts]
+version: "1.0"
+base_url: https://api.hubapi.com
+auth:
+  type: bearer
+  token_field: access_token
+pagination:
+  type: cursor
+  cursor_param: after
+  cursor_field: paging.next.after
+  has_more_field: ""
+  data_field: results
+resources:
+  contacts:
+    path: /crm/v3/objects/contacts
+    method: GET
+    data_field: results
+  companies:
+    path: /crm/v3/objects/companies
+    method: GET
+    data_field: results
+  deals:
+    path: /crm/v3/objects/deals
+    method: GET
+    data_field: results

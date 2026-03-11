@@ -1,0 +1,29 @@
+name: square
+description: Payment processing and point-of-sale platform
+category: payments
+tags: [payments, pos, invoices]
+version: "1.0"
+base_url: https://connect.squareup.com/v2
+openapi_url: https://raw.githubusercontent.com/square/connect-api-specification/master/square-connect-api.json
+auth:
+  type: bearer
+  token_field: access_token
+pagination:
+  type: cursor
+  cursor_param: cursor
+  cursor_field: cursor
+  has_more_field: ""
+  data_field: ""
+resources:
+  customers:
+    path: /customers
+    method: GET
+    data_field: customers
+  payments:
+    path: /payments
+    method: GET
+    data_field: payments
+  orders:
+    path: /orders/search
+    method: POST
+    data_field: orders

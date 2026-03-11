@@ -1,0 +1,29 @@
+name: asana
+description: Work management and team collaboration platform
+category: project-management
+tags: [tasks, projects, team-collaboration]
+version: "1.0"
+base_url: https://app.asana.com/api/1.0
+auth:
+  type: bearer
+  token_field: access_token
+pagination:
+  type: offset
+  offset_param: offset
+  limit_param: limit
+  limit_default: 100
+  total_field: ""
+  data_field: data
+resources:
+  tasks:
+    path: /tasks
+    method: GET
+    data_field: data
+  projects:
+    path: /projects
+    method: GET
+    data_field: data
+  workspaces:
+    path: /workspaces
+    method: GET
+    data_field: data

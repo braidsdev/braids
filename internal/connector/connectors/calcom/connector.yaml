@@ -1,0 +1,24 @@
+name: calcom
+description: Open-source scheduling and calendar platform
+category: scheduling
+tags: [calendar, scheduling, bookings, appointments]
+version: "1.0"
+base_url: https://api.cal.com/v1
+openapi_url: https://api.cal.com/docs
+auth:
+  type: bearer
+  token_field: api_key
+pagination:
+  type: none
+resources:
+  event_types:
+    path: /event-types
+    method: GET
+    data_field: event_types
+  bookings:
+    path: /bookings
+    method: GET
+    data_field: bookings
+  availability:
+    path: /availability
+    method: GET

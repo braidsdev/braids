@@ -1,0 +1,21 @@
+name: resend
+description: Email API for developers
+category: email
+tags: [email, transactional-email, developer-tools]
+version: "1.0"
+base_url: https://api.resend.com
+openapi_url: https://raw.githubusercontent.com/resend/resend-openapi/main/resend.yaml
+auth:
+  type: bearer
+  token_field: api_key
+pagination:
+  type: none
+resources:
+  emails:
+    path: /emails
+    method: GET
+    data_field: data
+  domains:
+    path: /domains
+    method: GET
+    data_field: data

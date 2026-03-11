@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/braidsdev/braids/internal/config"
 	"github.com/braidsdev/braids/internal/connector"
@@ -45,7 +47,50 @@ var connectorsUpdateCmd = &cobra.Command{
 	},
 }
 
+var connectorsListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all built-in connectors",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		connectors, err := connector.ListBuiltinConnectors()
+		if err != nil {
+			return err
+		}
+
+		// Group by category
+		byCategory := make(map[string][]connector.ConnectorInfo)
+		for _, c := range connectors {
+			cat := c.Category
+			if cat == "" {
+				cat = "other"
+			}
+			byCategory[cat] = append(byCategory[cat], c)
+		}
+
+		// Sort categories
+		categories := make([]string, 0, len(byCategory))
+		for cat := range byCategory {
+			categories = append(categories, cat)
+		}
+		sort.Strings(categories)
+
+		for _, cat := range categories {
+			fmt.Printf("\n%s:\n", strings.ToUpper(cat))
+			// Sort connectors within category
+			items := byCategory[cat]
+			sort.Slice(items, func(i, j int) bool {
+				return items[i].Name < items[j].Name
+			})
+			for _, c := range items {
+				fmt.Printf("  %-16s %s\n", c.Name, c.Description)
+			}
+		}
+		fmt.Printf("\n%d connectors available\n", len(connectors))
+		return nil
+	},
+}
+
 func init() {
 	connectorsCmd.AddCommand(connectorsUpdateCmd)
+	connectorsCmd.AddCommand(connectorsListCmd)
 	rootCmd.AddCommand(connectorsCmd)
 }

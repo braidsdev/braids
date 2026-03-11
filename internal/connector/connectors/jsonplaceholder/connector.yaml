@@ -1,4 +1,7 @@
 name: jsonplaceholder
+description: Free fake API for testing and prototyping
+category: testing
+tags: [testing, mock, rest]
 version: "1.0"
 base_url: https://jsonplaceholder.typicode.com
 auth:

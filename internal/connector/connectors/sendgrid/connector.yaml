@@ -1,0 +1,20 @@
+name: sendgrid
+description: Email delivery and marketing platform
+category: email
+tags: [email, transactional-email, marketing]
+version: "1.0"
+base_url: https://api.sendgrid.com/v3
+auth:
+  type: bearer
+  token_field: api_key
+pagination:
+  type: none
+resources:
+  contacts:
+    path: /marketing/contacts
+    method: GET
+    data_field: result
+  templates:
+    path: /templates
+    method: GET
+    data_field: templates

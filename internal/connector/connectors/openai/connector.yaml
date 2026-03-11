@@ -1,0 +1,25 @@
+name: openai
+description: AI and large language model API platform
+category: ai
+tags: [ai, llm, machine-learning, gpt]
+version: "1.0"
+base_url: https://api.openai.com/v1
+openapi_url: https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml
+auth:
+  type: bearer
+  token_field: api_key
+pagination:
+  type: none
+resources:
+  models:
+    path: /models
+    method: GET
+    data_field: data
+  files:
+    path: /files
+    method: GET
+    data_field: data
+  fine_tuning_jobs:
+    path: /fine_tuning/jobs
+    method: GET
+    data_field: data

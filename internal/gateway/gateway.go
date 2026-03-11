@@ -13,6 +13,7 @@ import (
 
 	"github.com/braidsdev/braids/internal/config"
 	"github.com/braidsdev/braids/internal/connector"
+	"github.com/braidsdev/braids/internal/extension"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -23,9 +24,10 @@ type Gateway struct {
 	configPath string
 	configDir  string
 	cfg        *config.Config
-	engines    map[string]*connector.ConnectorEngine
+	engines    map[string]connector.Fetcher
 	mu         sync.RWMutex
 	server     *http.Server
+	extMgr     *extension.Manager
 }
 
 // New creates a Gateway from a config file path.
@@ -38,6 +40,7 @@ func New(configPath string) (*Gateway, error) {
 	g := &Gateway{
 		configPath: absPath,
 		configDir:  filepath.Dir(absPath),
+		extMgr:     extension.NewManager(),
 	}
 
 	if err := g.loadConfig(); err != nil {
@@ -56,13 +59,23 @@ func (g *Gateway) loadConfig() error {
 		return err
 	}
 
-	engines := make(map[string]*connector.ConnectorEngine, len(cfg.Connectors))
+	engines := make(map[string]connector.Fetcher, len(cfg.Connectors))
 	for name, ref := range cfg.Connectors {
+		log.Printf("Loading connector %q (type: %s)...", name, ref.Type)
 		def, err := connector.LoadDef(ref.Type, g.configDir, ref.Path)
 		if err != nil {
 			return fmt.Errorf("loading connector %q: %w", name, err)
 		}
-		engines[name] = connector.New(def, ref.Config)
+		protocol := def.Protocol
+		if protocol == "" {
+			protocol = "http"
+		}
+		fetcher, err := connector.NewFetcher(def, ref, g.extMgr)
+		if err != nil {
+			return fmt.Errorf("creating fetcher for connector %q: %w", name, err)
+		}
+		engines[name] = fetcher
+		log.Printf("Connector %q ready (protocol: %s)", name, protocol)
 	}
 
 	g.mu.Lock()
@@ -92,12 +105,30 @@ func (g *Gateway) Start() error {
 		go g.watchConfig()
 	}
 
+	// Non-blocking check for extension updates
+	var extProtocols []string
+	for _, ref := range g.cfg.Connectors {
+		if extension.IsExtensionProtocol(ref.Type) {
+			extProtocols = append(extProtocols, ref.Type)
+		}
+	}
+	if len(extProtocols) > 0 {
+		go func() {
+			updates := g.extMgr.CheckForUpdates(extProtocols)
+			for proto, latest := range updates {
+				log.Printf("Warning: extension %s has update available (latest: v%s)", proto, latest)
+				log.Printf("  Run: braids extensions update %s", proto)
+			}
+		}()
+	}
+
 	PrintBanner(g.cfg, g.engines, g.Version, g.configPath)
 	return g.server.ListenAndServe()
 }
 
 // Shutdown gracefully stops the gateway.
 func (g *Gateway) Shutdown(ctx context.Context) error {
+	g.extMgr.Shutdown()
 	return g.server.Shutdown(ctx)
 }
 

@@ -1,0 +1,7 @@
+name: grpc
+description: gRPC service
+category: infrastructure
+tags: [rpc, grpc, protobuf]
+protocol: grpc
+auth:
+  type: none

@@ -7,10 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 )
-
-var configVarPattern = regexp.MustCompile(`\$\{(\w+)\}`)
 
 // pathParamPattern matches {name} placeholders in resource paths.
 var pathParamPattern = regexp.MustCompile(`\{(\w+)\}`)
@@ -32,7 +31,7 @@ func substitutePath(path string, pathParams map[string]string) string {
 // Fetch retrieves all records for a resource, handling auth and pagination.
 // Static query parameters from params and headers are included on every request.
 // pathParams substitutes {name} placeholders in the resource path.
-func (c *ConnectorEngine) Fetch(resource string, params map[string]any, pathParams map[string]string, headers ...map[string]string) ([]Record, error) {
+func (c *HTTPFetcher) Fetch(resource string, params map[string]any, pathParams map[string]string, headers ...map[string]string) ([]Record, error) {
 	res, ok := c.def.Resources[resource]
 	if !ok {
 		return nil, fmt.Errorf("resource %q not found in connector %q", resource, c.def.Name)
@@ -45,11 +44,19 @@ func (c *ConnectorEngine) Fetch(resource string, params map[string]any, pathPara
 	// Build static query params from source config
 	staticParams := buildQueryParams(params)
 
+	// Inject query_param auth (e.g. ?api_key=xxx)
+	if c.def.Auth.Type == "query_param" {
+		if val, ok := c.config[c.def.Auth.TokenField]; ok {
+			staticParams.Set(c.def.Auth.ParamName, val)
+		}
+	}
+
 	if len(staticParams) > 0 {
 		fetchURL += "?" + staticParams.Encode()
 	}
 
 	var allRecords []Record
+	currentPage := 1
 
 	for {
 		req, err := http.NewRequest(res.Method, fetchURL, nil)
@@ -135,6 +142,41 @@ func (c *ConnectorEngine) Fetch(resource string, params map[string]any, pathPara
 			}
 			fetchURL = nextURL
 
+		case "offset":
+			total := extractNumber(raw, c.def.Pagination.TotalField)
+			if len(allRecords) >= total || len(records) == 0 {
+				return allRecords, nil
+			}
+			paginatedParams := buildQueryParams(params)
+			if c.def.Auth.Type == "query_param" {
+				if val, ok := c.config[c.def.Auth.TokenField]; ok {
+					paginatedParams.Set(c.def.Auth.ParamName, val)
+				}
+			}
+			paginatedParams.Set(c.def.Pagination.OffsetParam, fmt.Sprintf("%d", len(allRecords)))
+			if c.def.Pagination.LimitParam != "" {
+				paginatedParams.Set(c.def.Pagination.LimitParam, fmt.Sprintf("%d", c.def.Pagination.LimitDefault))
+			}
+			fetchURL = baseURL + resolvedPath + "?" + paginatedParams.Encode()
+
+		case "page":
+			total := extractNumber(raw, c.def.Pagination.TotalField)
+			if len(allRecords) >= total || len(records) == 0 {
+				return allRecords, nil
+			}
+			currentPage++
+			paginatedParams := buildQueryParams(params)
+			if c.def.Auth.Type == "query_param" {
+				if val, ok := c.config[c.def.Auth.TokenField]; ok {
+					paginatedParams.Set(c.def.Auth.ParamName, val)
+				}
+			}
+			paginatedParams.Set(c.def.Pagination.PageParam, fmt.Sprintf("%d", currentPage))
+			if c.def.Pagination.LimitParam != "" {
+				paginatedParams.Set(c.def.Pagination.LimitParam, fmt.Sprintf("%d", c.def.Pagination.LimitDefault))
+			}
+			fetchURL = baseURL + resolvedPath + "?" + paginatedParams.Encode()
+
 		default:
 			return allRecords, nil
 		}
@@ -181,18 +223,7 @@ func buildQueryParams(params map[string]any) url.Values {
 	return vals
 }
 
-func (c *ConnectorEngine) addAuth(req *http.Request) {
-	switch c.def.Auth.Type {
-	case "bearer":
-		token := c.config[c.def.Auth.TokenField]
-		req.Header.Set("Authorization", "Bearer "+token)
-	case "header":
-		token := c.config[c.def.Auth.TokenField]
-		req.Header.Set(c.def.Auth.HeaderName, token)
-	}
-}
-
-func (c *ConnectorEngine) extractRecords(raw map[string]any, resourceDataField string) ([]Record, error) {
+func (c *HTTPFetcher) extractRecords(raw map[string]any, resourceDataField string) ([]Record, error) {
 	// Resource-level data_field takes precedence, then pagination-level
 	dataField := resourceDataField
 	if dataField == "" {
@@ -217,16 +248,6 @@ func (c *ConnectorEngine) extractRecords(raw map[string]any, resourceDataField s
 	return records, nil
 }
 
-func (c *ConnectorEngine) substituteVars(s string) string {
-	return configVarPattern.ReplaceAllStringFunc(s, func(match string) string {
-		varName := configVarPattern.FindStringSubmatch(match)[1]
-		if val, ok := c.config[varName]; ok {
-			return val
-		}
-		return match
-	})
-}
-
 // arrayToRecords converts a []any to []Record, skipping non-object elements.
 func arrayToRecords(arr []any) []Record {
 	records := make([]Record, 0, len(arr))
@@ -236,6 +257,33 @@ func arrayToRecords(arr []any) []Record {
 		}
 	}
 	return records
+}
+
+// extractNumber traverses a dot-separated field path in a JSON object
+// and returns the integer value. Returns 0 if not found or not a number.
+func extractNumber(raw map[string]any, field string) int {
+	if field == "" {
+		return 0
+	}
+	parts := strings.Split(field, ".")
+	var current any = raw
+	for _, part := range parts {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return 0
+		}
+		current = m[part]
+	}
+	switch v := current.(type) {
+	case float64:
+		return int(v)
+	case int:
+		return v
+	case string:
+		n, _ := strconv.Atoi(v)
+		return n
+	}
+	return 0
 }
 
 // parseLinkHeaderNext extracts the URL for rel="next" from a Link header.

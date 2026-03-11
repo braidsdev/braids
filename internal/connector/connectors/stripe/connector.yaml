@@ -1,7 +1,10 @@
 name: stripe
+description: Payment processing platform
+category: payments
+tags: [payments, billing, subscriptions]
 version: "1.0"
 base_url: https://api.stripe.com
-openapi_url: https://raw.githubusercontent.com/stripe/openapi/refs/heads/master/latest/openapi.spec3.json
+openapi_url: https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json
 auth:
   type: bearer
   token_field: api_key
